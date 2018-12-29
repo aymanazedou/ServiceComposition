@@ -1,0 +1,49 @@
+package CE;
+
+import java.io.IOException;
+import java.net.Socket;
+import java.util.Vector;
+
+public class ComEngMain {
+
+	public static void main(String[] args) {
+
+		Socket socket;
+		String message;
+		
+		try {
+			socket = new Socket("127.0.0.1", 5000);
+			
+				//CLIENT WANT A COMBINATION OF SERVICES THAT HAS P1 AS ENTERY AND P2 AS OUT
+				//SendThreadEXIST to get the services that have P1 as entry
+				//initialize the search by getting the IN parameter and the OUT parameter from the client's request (web application)
+				// = new Vector<Vector<String>>();
+			 	
+			
+			message = "exist P4 P1";
+			SendThreadEXIST sendthread = new SendThreadEXIST(socket,message);
+			sendthread.start();
+			 	
+				
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+}
+
+//=============================================object parametre==========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+

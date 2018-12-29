@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
+		<item value="false" key="isRegEx"/>
+		<item value="sleep" key="selection"/>
+		<item value="false" key="casesensitive"/>
+		<item value="false" key="incremental"/>
+		<item value="true" key="wrap"/>
+		<item value="false" key="wholeword"/>
+		<list key="findhistory">
+			<item value="sleep"/>
+			<item value="read the stream"/>
+			<item value="t--"/>
+			<item value="sendfile"/>
+			<item value="100"/>
+			<item value="2500"/>
+			<item value="read the"/>
+			<item value="REAd the"/>
+			<item value=" 3 || "/>
+			<item value="NumberFormatException"/>
+			<item value="10"/>
+			<item value="repete"/>
+			<item value="repere"/>
+			<item value="REPETE"/>
+			<item value="repe"/>
+		</list>
+		<list key="replacehistory">
+			<item value="1000"/>
+			<item value="2500"/>
+			<item value="1500"/>
+			<item value="500"/>
+			<item value="Sending files"/>
+		</list>
+	</section>
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
+		<item value="344" key="DIALOG_WIDTH"/>
+		<item value="1|Ubuntu|11.0|0|GTK|1|" key="DIALOG_FONT_NAME"/>
+		<item value="247" key="DIALOG_HEIGHT"/>
+		<item value="899" key="DIALOG_X_ORIGIN"/>
+		<item value="4" key="DIALOG_Y_ORIGIN"/>
+	</section>
+</section>

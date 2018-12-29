@@ -1,0 +1,141 @@
+package CE;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+
+//=======================================demanding to the registry if the service EXIST=========================
+
+public class SendThreadEXIST extends Thread {
+	String msg;
+	Socket soc;
+	BufferedReader in;
+	PrintWriter out;
+	String message;
+	String Response;
+	String root;
+
+	public SendThreadEXIST (Socket soc, String message) {
+		this.soc=soc;
+		this.message=message;
+		try {
+
+			out = new PrintWriter(soc.getOutputStream());
+			in = new BufferedReader(new InputStreamReader(soc.getInputStream()));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	@Override
+	public void run() {
+		
+			//send the message
+			msg = message;
+			out.println(msg);
+			out.flush();
+			
+			
+			String[] splitMessage = msg.split(" ");
+			System.out.println("root parameter of the tree : " + splitMessage[1]);
+			
+			
+			//create the root
+			Node<String> root = new Node<>(splitMessage[1].toString());
+			
+
+			//==========get the response=======
+			try {
+				Response = in.readLine();			
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			//===================================
+			System.out.println(Response);
+			//get the information needed from the response==============================
+			String[] splitResponse = Response.split(" ");
+			for (int i = 0; i < splitResponse.length; i++) {
+				System.out.println("responses "+ i + " : " + splitResponse[i]);
+			}
+			
+			
+			
+			
+			//=========================================================================
+			//msg = "exist P3 P4";
+			//out.println(msg);
+			//out.flush();
+
+
+			//==========the message=======
+			try {
+				msg = in.readLine();
+				System.out.println("Annuaire : " + msg);
+				//===================================
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+	}
+	
+}
+//=================================================================================
+class Node<T> {
+
+	private T data = null;
+	
+	private String service ="";
+
+	private List<Node<T>> children = new ArrayList<>();
+
+	private Node<T> parent = null;
+
+	public Node(T data) {
+		this.data = data;
+	}
+
+	public Node<T> addChild(Node<T> child, String service) {
+		child.setParent(this);
+		child.setService(service);
+		this.children.add(child);
+		return child;
+	}
+
+	public void addChildren(List<Node<T>> children) {
+		children.forEach(each -> each.setParent(this));
+		this.children.addAll(children);
+	}
+
+	public List<Node<T>> getChildren() {
+		return children;
+	}
+
+	public T getData() {
+		return data;
+	}
+	public String getService() {
+		return service;
+	}
+	public void setService(String service) {
+		this.service = service;
+	}
+
+	public void setData(T data) {
+		this.data = data;
+	}
+
+	private void setParent(Node<T> parent) {
+		this.parent = parent;
+	}
+
+	public Node<T> getParent() {
+		return parent;
+	}
+
+}
+
+
+
+

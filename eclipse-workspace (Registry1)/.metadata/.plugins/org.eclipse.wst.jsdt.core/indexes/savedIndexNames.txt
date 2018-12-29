@@ -1,0 +1,1 @@
+INDEX VERSION 1.4+/home/ayman/eclipse-workspace (Registry1)/.metadata/.plugins/org.eclipse.wst.jsdt.core/indexes

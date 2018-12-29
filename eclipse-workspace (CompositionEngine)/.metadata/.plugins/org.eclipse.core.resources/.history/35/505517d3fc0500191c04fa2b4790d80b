@@ -1,0 +1,642 @@
+/**This program deals with one client (application) and demands to the registry if the parameter exists in the database.
+the registry then answer with a message, that can be NoParameter if it doesn't exist in the database, or NoService if the parameter exists
+but there is no services that take it as entry, or an explicit response with all services that take the parameter as input and the corresponding
+output.
+with those parameters and service names, the tree algorithm is created to find a certain composition of services that take one parameter as input
+and give another.
+ **/
+
+package CE;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
+
+public class SendThreadEXIST extends Thread {
+	String msg;
+	Socket soc;
+	Socket SocClient;
+	BufferedReader in;
+	PrintWriter out;
+	BufferedReader inClient;
+	PrintWriter outClient;
+	OutputStream osClient;
+	FileInputStream fis;
+	BufferedInputStream bis;
+	String message;
+	String Response;
+	String destination;
+	String ClientID;
+	String RootName;
+	String WsdlDownloadDirectry;
+	String FolderOfClient;
+	ArrayList<Node<String>> table1;
+	ArrayList<Node<String>> table2;
+	List<String> OldRequest;
+	List<String> services;
+	List<String> PreOldRequest1;
+	List<String> PreOldRequest2;
+	List<String> combination;
+	Node<String> root;
+	String MessageClient="";
+	boolean NoComposition;
+	boolean NoParameter;
+	boolean found;
+	boolean NoService;
+	FileOutputStream fos;
+	BufferedOutputStream bos;
+	int bytesRead;
+	long StartCompositionTime;
+	long FinishCompositionTime;
+	
+
+	private static <T> void printTree(Node<T> node, String appender,String ClientID) {
+		System.out.println(ClientID+" || "+appender + node.getData() + " "+ node.getService());
+		node.getChildren().forEach(each ->  printTree(each, appender + appender,ClientID));
+	}
+	
+
+	public SendThreadEXIST (Socket SocClient,Socket soc) throws IOException {
+		this.soc=soc;
+		this.SocClient=SocClient;
+
+		//LOAD PROPERTIES
+		Properties prop = new Properties();
+		InputStream input = ComEngMain.class.getClassLoader().getResourceAsStream("Properties/conf.properties");
+		prop.load(input);
+
+		//GET VALUES FROM THE PROPERTY FILE
+		WsdlDownloadDirectry = prop.getProperty("WsdlDownloadDirectry");
+		
+		
+		try {
+			combination = new ArrayList<>();
+			PreOldRequest1 = new ArrayList<>();
+			PreOldRequest2 = new ArrayList<>();
+			OldRequest = new ArrayList<>();
+			table2 = new ArrayList<Node<String>>();
+			table1 = new ArrayList<Node<String>>();
+			outClient = new PrintWriter(SocClient.getOutputStream());
+			inClient = new BufferedReader(new InputStreamReader(SocClient.getInputStream()));
+			out = new PrintWriter(soc.getOutputStream());
+			in = new BufferedReader(new InputStreamReader(soc.getInputStream()));
+			bos = null;
+			fos = null;
+			fis=null;
+			bis=null;
+			osClient=null;
+			services = new ArrayList<>();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	@Override
+	public void run() {
+		while(true) {			
+			String ComOfService= "";
+			String servicename = "";
+			String Net_Time="";
+			String Exec_Time="";
+			MessageClient="";
+			NoComposition = false;
+			NoParameter = false;
+			NoService = false;
+			found=false;
+			table1.clear();
+			table2.clear();
+			OldRequest.clear();
+			PreOldRequest1.clear();
+			PreOldRequest2.clear();
+			combination.clear();
+
+
+			//GET THE MESSAGE FROM THE CLIENT (APPLICATION)
+			try {
+				MessageClient = inClient.readLine();
+				System.out.println("Message received from the client : "+MessageClient);
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			//SPLIT THE MESSAGE AND GET THE INPUT (ROOT NODE OF THE TREE) AND THE OUTPUT (DESTINATION NODE) OF THE SERVICE SEARCHED, AS WELL AS THE CLIENT ID
+			String[] splitMessage = MessageClient.split(" ");
+
+			if (splitMessage[0].equals("exist")) {
+				//START SEARCHING FOR THE COMPOSITION
+				StartCompositionTime = System.nanoTime();
+				
+				ClientID = splitMessage[3];
+				destination = splitMessage[2];
+				RootName = splitMessage[1];
+				System.out.println(ClientID+" || Affected registry is : "+ soc.getPort());
+
+				//SEARCHING FOR CHILDREN OF THE ROOT PARAMETER BY SENDING MESSAGE TO THE REGISTRY.
+				msg = "exist " + splitMessage[1];
+				out.println(msg);
+				out.flush();
+
+				//GET THE RESPONSE FROM THE REGISTRY.
+				try {
+					Response = in.readLine();
+					//IF THE RESPONSE IS NoParameter, MEANS THE PARAMETER DOESN'T EXIST IN THE DATABASE OF REGISTRY, NEITHER AS INPUT NOR OUTPUT.
+					if (Response.equals("NoParameter")) {
+						NoParameter=true;
+						found=true;
+						ComOfService="NoParameter" + RootName;
+					}
+					//IF THE RESPONSE IS NoService, MEANS THE PARAMETER EXIST IN THE DATABASE OF THE REGISTRY, BUT NOT AS INPUT OF ANY SERVICE.
+					else if (Response.equals("NoService")) {
+						NoService=true;
+						found=true;
+						ComOfService="NoService";
+					}
+					//IF NO ONE OF THE PREVIOUS CONDITIONS, WE ARE SURE THAT THE PARAMETER REQUESTED EXIST AS INPUT OF SOME SERVICES.
+					else {
+
+						/**add to OldRequest, this list prevent re-sending the same request (to get children) of the same parameter,
+						 * because we know that we will have the same response of children. By doing that, we prevent the infinite loop.
+						 */
+						OldRequest.add(splitMessage[1]);
+
+						//CREATE THE ROOT
+						root = new Node<>(splitMessage[1]);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
+				//WE ARE SURE THE ROOT HAVE CHILDREN, SE WE ADD THEM TO TABLE1.
+				if (!NoParameter && !NoService) {
+					
+					//WE CREATE A FOLDER WHERE WE WILL ADD FILES DOWNLOADED FOR THIS SPECIAL CLIENT.
+					File newFolder = new File(WsdlDownloadDirectry+"/"+"ID"+ClientID);
+					boolean created =  newFolder.mkdir();
+					/**if(created) {
+						System.out.println(ClientID+" || Folder was created !");
+					}
+					else {
+						System.out.println(ClientID+" || Unable to create folder, ALREADY CREATED!");
+					}
+					**/
+					
+					//ADD CHILDREN TO THE ROOT NODE.
+					String[] splitResponse = Response.split(" ");
+					int i;
+					for (i = 0; i < splitResponse.length; i++) {
+						String[] splitPara = splitResponse[i].split(",");
+						Node<String> child = root.addChild(new Node<String>(splitPara[0]),splitPara[1],Integer.parseInt(splitPara[2]),Integer.parseInt(splitPara[3]));
+						PreOldRequest1.add(splitPara[0]);
+						if (splitPara[0].equals(destination)) {
+							found = true;
+							servicename= child.getService();
+							Net_Time = Integer.toString(child.getNet_Time());
+							Exec_Time = Integer.toString(child.getExec_Time());
+							combination.add(servicename);
+							combination.add(Net_Time);
+							combination.add(Exec_Time);
+							
+						}
+						table1.add(child);
+						if (found) {break;}
+					}
+
+					//DOWNLOAD ALL WSDL FILES OF THE SERVICES RETURNED IN THE RESPONSE (CHILDREN).
+					//SERVICES TABLE ALOW US TO REQUEST THE DOWNLOAD OF THE SERVICES RETURNED IN THE RESPONSE.
+					//CLEAR IT EVERYTIME WE WANT TO USE IT.
+					services.clear();
+					String FilesDownLoad = "";
+					for (int j = 0; j < splitResponse.length; j++) {
+						String[] splitPara = splitResponse[j].split(",");
+						FilesDownLoad += " " + splitPara[1];
+						services.add(splitPara[1]);
+					}
+					System.out.println(ClientID+" || --> files to download : " + FilesDownLoad);
+
+					//SEND MESSAGE TO GET WSDL FILE CORRESPONDING TO A SERVICE
+					InputStream is;
+					for (int j = 0; j < services.size(); j++) {
+						out.println("SendFile "+ services.get(j));
+						out.flush();
+						
+						//GET THE MESSAGE FROM THE CLIENT ABOUT THE SIZE OF THE FILE.
+						long FileSize = 0;
+						try {
+							FileSize = Long.parseLong(in.readLine());
+						} catch (NumberFormatException e1) {
+							e1.printStackTrace();
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+						long AlreadyRead=0;
+						
+						//READ THE STREAM  AND WRITE ON THE FILE.
+						try {	
+							is = soc.getInputStream();
+							byte [] mybytearray  = new byte [350];
+							fos = new FileOutputStream(WsdlDownloadDirectry+"/"+"ID"+ClientID+"/"+services.get(j)+".wsdl");
+							bos = new BufferedOutputStream(fos);
+							
+							while (AlreadyRead<FileSize) {
+								bytesRead=is.read(mybytearray,0,mybytearray.length);
+								bos.write(mybytearray, 0 , bytesRead);
+								bos.flush();
+								System.out.println(ClientID+" || bytes downloaded for the service : " + services.get(j) + " (" + bytesRead + " bytes )");
+								AlreadyRead+=bytesRead;
+							}
+							fos.close();
+							bos.close();
+							System.out.println(ClientID+" || File of " + services.get(j) + " downloaded ");
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						
+					}
+				}
+
+				//WE INITIATE THE INTEGER i, THAT WILL HELP US TO SWITCH BETWEEN TABLE1 AND TABLE2.
+				//AT EACH ROUND ONE TABLE WILL BE INITIALIZED AND TAKE CHILDREN OF THE OTHER TABLE.
+
+				int i = 1;
+				while(!found) {
+					if (i%2!=0) {
+						table2.clear();
+
+						//LOOP TO SEARCH FOR CHILDREN OF NODES IN TABLE1
+						for (int j = 0; j < table1.size(); j++) {
+							String Parameter = table1.get(j).getData();
+							if (!OldRequest.contains(Parameter)) {
+								String message = "exist "+Parameter;
+
+								//SEND THE MESSAGE
+								out.println(message);
+								out.flush();
+
+								//GET THE REPLY
+								try {
+									Response = in.readLine();
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+								if (Response.equals("NoService")) {
+									continue;
+								}
+
+								//SPLIT THE MESSAGE AND AddCHILDREN TO TABLE2.
+								String[] splitResp = Response.split(" ");
+								for (int t = 0; t < splitResp.length;t++) {
+									String[] splitPara = splitResp[t].split(",");
+									PreOldRequest2.add(splitPara[0]);
+									Node<String> child = table1.get(j).addChild(new Node<String>(splitPara[0]),splitPara[1],Integer.parseInt(splitPara[2]),Integer.parseInt(splitPara[3]));
+									if (splitPara[0].equals(destination)) {
+										found = true;
+										while(child!=root) {
+											servicename= child.getService();
+											Net_Time = Integer.toString(child.getNet_Time());
+											Exec_Time = Integer.toString(child.getExec_Time());
+											child = child.getParent();
+											combination.add(servicename);
+											combination.add(Net_Time);
+											combination.add(Exec_Time);
+										}
+									}
+									table2.add(child);
+									if (found) {break;}
+								}
+								//DOWNLOAD ALL WSDL FILES OF THE SERVICES RETURNED.
+								//SERVICES TABLE ALOW US TO REQUEST THE DOWNLOAD OF THE SERVICES RETURNED IN THE RESPONSE.
+								services.clear();
+								String FilesDownLoad = "";
+								for (int t = 0; t < splitResp.length; t++) {
+									String[] splitPara = splitResp[t].split(",");
+									FilesDownLoad += " " + splitPara[1];
+									services.add(splitPara[1]);
+								}
+								System.out.println(ClientID+" || --> files to download : " + FilesDownLoad);
+
+								//SEND MESSAGE TO GET WSDL FILE CORRESPONDING TO A SERVICE
+								InputStream is;
+								for (int t = 0; t < services.size(); t++) {
+									out.println("SendFile "+ services.get(t));
+									out.flush();
+
+									//GET THE MESSAGE FROM THE CLIENT ABOUT THE SIZE OF THE FILE.
+									long FileSize = 0;
+									try {
+										FileSize = Long.parseLong(in.readLine());
+									} catch (NumberFormatException e1) {
+										e1.printStackTrace();
+									} catch (IOException e1) {
+										e1.printStackTrace();
+									}
+									long AlreadyRead=0;
+									
+									//READ THE STREAM AND WRITE ON THE FILE.
+									try {	
+										is = soc.getInputStream();
+										byte [] mybytearray  = new byte [350];
+										fos = new FileOutputStream(WsdlDownloadDirectry+"/"+"ID"+ClientID+"/"+services.get(t)+".wsdl");
+										bos = new BufferedOutputStream(fos);
+										
+										while (AlreadyRead<FileSize) {
+											bytesRead=is.read(mybytearray,0,mybytearray.length);
+											bos.write(mybytearray, 0 , bytesRead);
+											bos.flush();
+											System.out.println(ClientID+" || bytes downloaded for the service : " + services.get(t) + " (" + bytesRead + " bytes )");
+											AlreadyRead+=bytesRead;
+										}
+										fos.close();
+										bos.close();
+										System.out.println(ClientID+" || File of " + services.get(t) + " downloaded ");
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+								if (found) {break;}
+							}
+						}
+						if (table2.isEmpty()) {
+							NoComposition=true;
+							break;
+						}
+						OldRequest.addAll(PreOldRequest1);
+						PreOldRequest1.clear();
+					}
+					else {
+						table1.clear();
+
+						//LOOP TO SEARCH FOR CHILDREN OF NODES IN TABLE2.
+						for (int j = 0; j < table2.size(); j++) {
+							String Parameter = table2.get(j).getData();
+							if (!OldRequest.contains(Parameter)) {
+								String message = "exist "+Parameter;
+
+								//SEND THE MESSAGE
+								out.println(message);
+								out.flush();
+								//GET THE REPLY
+								try {
+									Response = in.readLine();
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+								if (Response.equals("NoService")) {
+									continue;
+								}
+
+								//SPLIT THE MESSAGE AND AddCHILDREN TO TABLE1.
+								String[] splitResp = Response.split(" ");
+
+
+								for (int t = 0; t < splitResp.length; t++) {
+									String[] splitPara = splitResp[t].split(",");
+									PreOldRequest1.add(splitPara[0]);
+									Node<String> child = table2.get(j).addChild(new Node<String>(splitPara[0]),splitPara[1],Integer.parseInt(splitPara[2]),Integer.parseInt(splitPara[3]));
+									if (splitPara[0].equals(destination)) {
+										found = true;
+										while(child!=root) {
+											servicename= child.getService();
+											Net_Time = Integer.toString(child.getNet_Time());
+											Exec_Time = Integer.toString(child.getExec_Time());
+											child = child.getParent();
+											combination.add(servicename);
+											combination.add(Net_Time);
+											combination.add(Exec_Time);
+										}
+									}
+									table1.add(child);
+									if (found) {break;}
+
+								}
+								//DOWNLOAD ALL WSDL FILES OF THE SERVICES RETURNED.
+								//SERVICES TABLE ALOW US TO REQUEST THE DOWNLOAD OF THE SERVICES RETURNED IN THE RESPONSE.
+								services.clear();
+								String FilesDownLoad = "";
+								for (int t = 0; t < splitResp.length; t++) {
+									String[] splitPara = splitResp[t].split(",");
+									FilesDownLoad += " " + splitPara[1];
+									services.add(splitPara[1]);
+								}
+								System.out.println(ClientID+" || --> files to download : " + FilesDownLoad);
+
+								//SEND MESSAGE TO GET WSDL FILE CORRESPONDING TO A SERVICE
+								InputStream is;
+								for (int t = 0; t < services.size(); t++) {
+									out.println("SendFile "+ services.get(t));
+									out.flush();
+
+									//GET THE MESSAGE FROM THE CLIENT ABOUT THE SIZE OF THE FILE
+									long FileSize = 0;
+									try {
+										FileSize = Long.parseLong(in.readLine());
+									} catch (NumberFormatException e1) {
+										e1.printStackTrace();
+									} catch (IOException e1) {
+										e1.printStackTrace();
+									}
+									long AlreadyRead=0;
+									
+									//READ THE STREAM  AND WRITE ON THE FILE
+									try {	
+										is = soc.getInputStream();
+										byte [] mybytearray  = new byte [350];
+										fos = new FileOutputStream(WsdlDownloadDirectry+"/"+"ID"+ClientID+"/"+services.get(t)+".wsdl");
+										bos = new BufferedOutputStream(fos);
+										
+										while (AlreadyRead<FileSize) {
+											bytesRead=is.read(mybytearray,0,mybytearray.length);
+											bos.write(mybytearray, 0 , bytesRead);
+											bos.flush();
+											System.out.println(ClientID+" || bytes downloaded for the service : " + services.get(t) + " (" + bytesRead + " bytes )");
+											AlreadyRead+=bytesRead;
+										}
+										fos.close();
+										bos.close();
+										System.out.println(ClientID+" || File of " + services.get(t) + " downloaded ");
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+								if (found) {break;}
+							}
+						}
+						if (table1.isEmpty()) {
+							NoComposition=true;
+							break;
+						}
+						OldRequest.addAll(PreOldRequest2);
+						PreOldRequest2.clear();
+					}
+					i++;
+				}
+				
+				//FINISHED WITH THE REGISTRY, SO CLOSE THE SOCKET WITH IT.
+				try {
+					out.println("close");
+					out.flush();
+					
+					soc.close();
+				} catch (IOException e) {
+					System.out.println("Error : Can't close the socket with the registry");
+					e.printStackTrace();
+				}
+				
+				
+				//CASES OF THE MESSAGE TO SEND TO THE CLIENT.
+				if (!NoService && !NoParameter) {
+					//System.out.println(ClientID+" || --> TREEEEEE ");
+					//printTree(root, " ",ClientID);
+					if(!NoComposition) {
+						for (int j = 0; j < combination.size();) {
+							ComOfService =ComOfService+ combination.get(j)+","+combination.get(j+1)+","+combination.get(j+2)+"<";
+							j+=3;
+						}
+					
+						//System.out.println(ClientID+" || --> combination is : " + ComOfService);
+
+					}
+					else {
+						ComOfService = "NoComposition";
+						//System.out.println(ClientID+" || there is no composition of services for the command : "+MessageClient);
+					}
+				}
+				//FINISH THE SEARCH FOR THE COMPOSITON
+				FinishCompositionTime = System.nanoTime();
+				System.out.println(ClientID+" || --> Client's Command : " + MessageClient  +" || result : " + ComOfService +" || Composition Time : " + (FinishCompositionTime - StartCompositionTime));
+				//SEND THE MESSAGE TO THE CLIENT.
+				outClient.println(ComOfService);
+				outClient.flush();	
+			}
+			
+			//SENDING FILES OF THE COMPOSITION TO THE CLIENT.
+			else if (splitMessage[0].equals("SendFile")) {
+				
+				//SENDING THE SIZE OF THE FILE TO THE CLIENT
+				File File = new File (WsdlDownloadDirectry+"/"+"ID"+ClientID+"/"+splitMessage[1]+".wsdl");
+				int length = (int)File.length();
+				outClient.println(length);
+				outClient.flush();
+				
+				//SENDING THE FILE.
+				try {
+					osClient =SocClient.getOutputStream();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				try {
+					byte [] mybytearray  = new byte [300];
+					fis = new FileInputStream(File);
+					bis = new BufferedInputStream(fis);
+					while((bytesRead = bis.read(mybytearray,0,mybytearray.length))>0) {
+						osClient.write(mybytearray,0,bytesRead);
+						osClient.flush();
+						System.out.println(ClientID+" || Data of the service "+ splitMessage[1]+" sent (" + bytesRead + " bytes) ...");
+						if (bis.available()<=0) {
+							break;
+						}
+					}
+					System.out.println(ClientID +" || "+ splitMessage[1]+" Sent.");
+					fis.close();
+					bis.close();
+				}catch(IOException e) {
+					e.printStackTrace();
+				}
+			}
+			else if (splitMessage[0].equals("close")) {
+				try {
+					SocClient.close();
+					break;
+				} catch (IOException e) {
+					System.out.println("Can't close the socket with the client");
+					e.printStackTrace();
+				}
+			}
+		}
+		
+	}
+
+}
+//=========================================================================
+class Node<T> {
+
+	private T data = null;
+
+	private String service ="";
+	private int Net_Time;
+	private int Exec_Time;
+
+	private List<Node<T>> children = new ArrayList<>();
+	private Node<T> parent = null;
+
+	public Node(T data) {
+		this.data = data;
+	}
+
+	public Node<T> addChild(Node<T> child, String service,int Net_Time, int Exec_Time) {
+		child.setParent(this);
+		child.setService(service);
+		child.setNet_Time(Net_Time);
+		child.setExec_Time(Exec_Time);
+		this.children.add(child);
+		return child;
+	}
+
+	public void addChildren(List<Node<T>> children) {
+		children.forEach(each -> each.setParent(this));
+		this.children.addAll(children);
+	}
+
+	public List<Node<T>> getChildren() {
+		return children;
+	}
+
+	public T getData() {
+		return data;
+	}
+	public String getService() {
+		return service;
+	}
+	public void setService(String service) {
+		this.service = service;
+	}
+	public void setNet_Time(int Net_Time) {
+		this.Net_Time = Net_Time;
+	}
+	public int getNet_Time() {
+		return Net_Time;
+	}
+	public void setExec_Time(int Exec_Time) {
+		this.Exec_Time = Exec_Time;
+	}
+	public int getExec_Time() {
+		return Exec_Time;
+	}
+	
+	public void setData(T data) {
+		this.data = data;
+	}
+
+	private void setParent(Node<T> parent) {
+		this.parent = parent;
+	}
+
+	public Node<T> getParent() {
+		return parent;
+	}
+
+}
+
+
+
+

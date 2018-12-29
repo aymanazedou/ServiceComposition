@@ -1,0 +1,137 @@
+package ann;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+
+//================================================================================================================
+public class MonAnnuaire {
+	static Connection connection=null;
+
+	public static void main(String[] args) throws SQLException, IOException {
+		ServerSocket socketAnnuaire;
+		Socket Socketdeannuaire;		
+     //==Connect to database==============================================================================
+		System.out.println("------------Mysql JDBC Connection-------------");
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		}
+		catch (ClassNotFoundException e) {
+			System.out.println("Driver not found!!");
+			e.printStackTrace();
+			return;
+		}
+		System.out.println("JDBC Driver OK!");
+		try {
+			MonAnnuaire.connection = DriverManager.getConnection("jdbc:mysql://localhost/Webservices?"+ "user=ay&password=aymanazedou");
+		}catch (Exception e) {
+			return;
+		}
+    //===the registry listen on port 5000, each time a Son-thread will treat the request of the Comb-Engine=======================
+		socketAnnuaire = new ServerSocket(5000);
+		while (true) {
+			Socketdeannuaire = socketAnnuaire.accept();
+			(new MonFils(Socketdeannuaire)).start();
+		}
+	}
+}
+//================================================================================================================
+
+
+
+
+
+
+
+
+//================================================================================================================
+class MonFils extends Thread{
+	String msg;
+	Socket soc;
+	BufferedReader in;
+	PrintWriter out;
+
+	public MonFils(Socket soc) {
+		this.soc=soc;		
+		try {
+			out = new PrintWriter(soc.getOutputStream());
+			in = new BufferedReader(new InputStreamReader(soc.getInputStream()));	
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	@Override
+	public void run() {
+			try {
+				msg = in.readLine();
+				//get the information needed from the message==========================================================
+				String[] splitMsg = msg.split("\\s+");
+				System.out.println("Command : " + splitMsg[0] + "\n");
+				for (int i = 1; i < splitMsg.length; i++) {
+					System.out.println("Parameter "+ i + " : " + splitMsg[i]);
+				}
+				//===================================splitMsg[1] is P2 and splitMsg[2] is P3===========================
+
+				//send reply=====================EXIST==============================================================
+				if (splitMsg[0].equals("exist")==true){
+					String msg;
+					// search on the database if P1 exists as entry with whatever out |||
+					//and if P2 exists and out, with whatever entry
+					//heeeeey, add InParam and OutParam to data base!!! don't dorget!!!
+					ResultSet resultSet = null;
+					String ServiceName = null;
+					String InPara = null;
+					String OutExist = "";
+					java.sql.Statement statement = MonAnnuaire.connection.createStatement();
+					resultSet = statement.executeQuery("select OUTP from Webservices.webs where webs.INP='P2';");
+					while (resultSet.next()) {
+						InPara = resultSet.getString("INP");
+						if (InPara.equals(splitMsg[1])){
+							OutExist = OutExist+resultSet.getString("OUTP")+ ","+resultSet.getString("servicename")+" ";
+						}
+					}
+					if (OutExist=="") {
+						OutExist="NoService";
+					}
+					out.println(OutExist);
+					out.flush();
+				}
+				//============================RETRIEVE A FILE====================================================
+				if (splitMsg[0].equals("retrieve")==true){
+					try {
+						ResultSet resultSet = null;
+						String inParameter=splitMsg[1];
+						String outParameter=splitMsg[2];
+						java.sql.Statement statement = MonAnnuaire.connection.createStatement();
+						//retrieve the link of file corresponding to the service that have inParameter and outParameter
+						resultSet = statement.executeQuery("select * from services.Ser");
+						FileInputStream file = new FileInputStream("/home/ayman/eclipse-workspace/WSDLs/WS.wsdl");
+						byte[] b = new byte[1024*100];
+						file.read(b, 0, b.length);
+						OutputStream outstream = soc.getOutputStream();
+						outstream.write(b, 0, b.length);
+						
+					} catch (IOException e) {
+						System.out.println("File not sent");
+					}
+					
+				}
+
+	}catch (IOException e) {
+		e.printStackTrace();
+	} catch (SQLException e) {
+		e.printStackTrace();
+	}
+	}
+	
+}

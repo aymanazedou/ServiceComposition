@@ -1,0 +1,3 @@
+INDEX VERSION 1.131
+/home/ayman/eclipse-workspace/.metadata/.plugins/org.eclipse.jst.jsp.core/jspsearch/2761819360.index
+/soap-ws-example/src

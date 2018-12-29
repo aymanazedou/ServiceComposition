@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
+		<item value="false" key="isRegEx"/>
+		<item value="Supervisor" key="selection"/>
+		<item value="false" key="casesensitive"/>
+		<item value="false" key="incremental"/>
+		<item value="true" key="wrap"/>
+		<item value="false" key="wholeword"/>
+		<list key="findhistory">
+			<item value="Supervisor"/>
+			<item value="1500"/>
+			<item value="1000"/>
+			<item value="SYS"/>
+			<item value="Supervisor : Packet sent"/>
+			<item value="yoo"/>
+			<item value="sys"/>
+			<item value="recei"/>
+			<item value="mycl"/>
+			<item value="TIME"/>
+			<item value="&quot;ID : &quot;+(ID+1)+&quot; || "/>
+			<item value="lder was creat"/>
+			<item value="bytes downloaded"/>
+			<item value="close"/>
+			<item value="P0 P8"/>
+		</list>
+		<list key="replacehistory">
+			<item value="2500"/>
+			<item value=""/>
+		</list>
+	</section>
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
+		<item value="344" key="DIALOG_WIDTH"/>
+		<item value="1|Ubuntu|11.0|0|GTK|1|" key="DIALOG_FONT_NAME"/>
+		<item value="244" key="DIALOG_HEIGHT"/>
+		<item value="3" key="DIALOG_X_ORIGIN"/>
+		<item value="94" key="DIALOG_Y_ORIGIN"/>
+	</section>
+</section>

@@ -1,0 +1,28 @@
+package paack;
+
+public class scoreservice {
+	
+
+	private static score score = new score();
+	
+	public score getScore() {return score;}
+	
+	public int increaseWins() { return ++score.wins;}
+	public int increaseTies() {return ++score.ties;}
+	public int increaseLosses() {return ++score.losses;}
+	
+	public int getWins() {return score.wins;}
+	public int getTies() {return score.ties;}
+	public int getLosses() {return score.losses;}
+	
+	public score updateScore(int losses, int ties, int wins) {
+		score.losses=losses;
+		score.ties=ties;
+		score.wins=wins;
+		return score;
+	}
+	public void reset() {
+		score.wins=score.losses=score.ties=0;
+	}
+	
+}

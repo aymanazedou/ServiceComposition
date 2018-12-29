@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;JAXWS_client/src/ws&apos; to &apos;ws.demo&apos;" description="Rename resource &apos;ws&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="src/ws" name="ws.demo" stamp="1542976423602" updateReferences="true"/>
+</session>

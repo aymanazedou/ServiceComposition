@@ -1,0 +1,109 @@
+package ann;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class MonAnnuaire {
+	static Connection connection=null;
+
+	public static void main(String[] args) throws SQLException, IOException {
+		ServerSocket socketAnnuaire;
+		Socket Socketdeannuaire;		
+//=======Connect to database==============================================================================
+		System.out.println("------------Mysql JDBC Connection-------------");
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		}
+		catch (ClassNotFoundException e) {
+			System.out.println("Driver not found!!");
+			e.printStackTrace();
+			return;
+		}
+		System.out.println("JDBC Driver OK!");
+		try {
+			MonAnnuaire.connection = DriverManager.getConnection("jdbc:mysql://localhost/services?"+ "user=ay&password=aymanazedou");
+		}catch (Exception e) {
+			return;
+		}
+//======the registry listen on port 5000, each time a Son-thread will treat the request of the Comb-Engine=======================
+		socketAnnuaire = new ServerSocket(5000);
+		while (true) {
+			Socketdeannuaire = socketAnnuaire.accept();
+			(new MonFils(Socketdeannuaire)).start();
+		}
+//====================================================================================================
+	}
+}
+
+
+class MonFils extends Thread{
+	String msg;
+	Socket soc;
+	BufferedReader in;
+	PrintWriter out;
+
+	public MonFils(Socket soc) {
+		this.soc=soc;		
+		try {
+			out = new PrintWriter(soc.getOutputStream());
+			in = new BufferedReader(new InputStreamReader(soc.getInputStream()));	
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	@Override
+	public void run() {
+		while(true) {
+			try {
+				msg = in.readLine();
+				//get the information needed from the message==========================================================
+				String[] splitMsg = msg.split("\\s+");
+				System.out.println("Command : " + splitMsg[0] + "\n");
+				for (int i = 1; i < splitMsg.length; i++) {
+					System.out.println("Parameter "+ i + " : " + splitMsg[i]);
+				}
+				//=====================================================================================================
+
+				//send reply=======================!!!!send also the file WSDL!!!!=====================================
+				if (splitMsg[0].equals("exist")==true){
+					double random = Math.random();
+					String msg;
+					//if random is greater than 20 percent so the service exists
+					if (random>0.2) {
+						//Retrieve from the database
+						ResultSet resultSet = null;
+						String location = null;
+						java.sql.Statement statement = MonAnnuaire.connection.createStatement();
+						resultSet = statement.executeQuery("select * from services.Ser");
+						while (resultSet.next()) {
+							location = resultSet.getString("linkWSDL");
+						}
+						msg = "===The service exist== and here is the link : ";
+						out.println(msg + location);
+						out.flush();
+					}
+					else {
+						msg = "xxxThe service doesn't existxxx";
+						out.println(msg);
+						out.flush();
+					}
+					//====================================================================================================
+
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+}

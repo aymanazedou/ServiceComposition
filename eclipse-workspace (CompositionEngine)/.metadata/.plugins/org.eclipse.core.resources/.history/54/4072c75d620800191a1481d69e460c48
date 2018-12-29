@@ -1,0 +1,9 @@
+#Listening port of the composition Engine
+ListeningPort=4000
+
+NbreOfRegistries = 2
+RegistryPort1=5000
+RegistryPort2=7000
+RegistryHostname=127.0.0.1
+#Folder where all folders of clients are gathered.
+WsdlDownloadDirectry =/home/ayman/CompositionProject/eclipse-workspace (CompositionEngine)/RetrievedWSDLs

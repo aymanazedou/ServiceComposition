@@ -1,0 +1,40 @@
+package main;
+
+import java.util.List;
+
+import entities.*;
+import ws.*;
+
+public class Main {
+
+	public static void main(String[] args) {
+		try {
+			DemoImplService demoImplService = new DemoImplServiceLocator();
+			Demo demo = demoImplService.getDemoImplPort();
+			ProductWSImplService ProductWSImplService = new ProductWSImplServiceLocator();
+			ProductWS ProductWS = ProductWSImplService.getProductWSImplPort();
+			Product Product = ProductWS.find();
+			
+			
+			Product[] ProdList = ProductWS.findAll();
+			
+			for (int i = 0; i < ProdList.length; i++) {
+				System.out.println(" ID : " + ProdList[i].getId());
+				System.out.println(" NAME : " + ProdList[i].getName());
+				System.out.println(" Price : " + ProdList[i].getPrice());
+				System.out.println("-------------------------------");
+			}
+			
+			
+			/**System.out.println(demo.helloWorld());
+			*System.out.println(demo.hi("ABC"));
+			*System.out.println("ID : " + Product.getId());
+			*System.out.println("NAME : " + Product.getName() );
+			*System.out.println("PRICE : " + Product.getPrice());
+			*/
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+	}
+
+}

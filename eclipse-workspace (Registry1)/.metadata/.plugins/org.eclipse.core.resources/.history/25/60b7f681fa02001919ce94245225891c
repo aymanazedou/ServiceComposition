@@ -1,0 +1,8 @@
+#Listening port of the registry.
+ListeningPort=5000
+#User and password to connect to the Mysql database.
+DbUserName=ay
+DbUserPassword=aymanazedou
+#Data Base name and the table used to store data of the services.
+DbName =Webservices
+DbTableName = webs

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring accessors="true" comment="Delete 3 elements from project &apos;CombinationEngine&apos;&#x0A;- Original project: &apos;CombinationEngine&apos;&#x0A;- Original elements:&#x0A;     hs_err_pid25292.log&#x0A;     hs_err_pid27283.log&#x0A;     hs_err_pid3145.log" description="Delete elements" element1="hs_err_pid27283.log" element2="hs_err_pid3145.log" element3="hs_err_pid25292.log" elements="0" flags="589830" id="org.eclipse.jdt.ui.delete" resources="3" stamp="1545261191003" subPackages="false" version="1.0"/>
+</session>

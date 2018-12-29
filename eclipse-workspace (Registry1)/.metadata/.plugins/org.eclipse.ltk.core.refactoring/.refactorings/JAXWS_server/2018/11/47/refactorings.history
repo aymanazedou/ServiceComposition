@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;JAXWS_server/src/main/main.java&apos; to &apos;Main.java&apos;" description="Rename resource &apos;main.java&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="src/main/main.java" name="Main.java" stamp="1542974650142" updateReferences="true"/>
+</session>

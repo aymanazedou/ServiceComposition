@@ -1,0 +1,77 @@
+package CE;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Scanner;
+
+public class ComEngMain {
+
+	public static void main(String[] args) {
+		
+		Socket socket;
+		final BufferedReader in;
+		final PrintWriter out;
+		
+		// lire a partir du clavier
+		final Scanner sc = new Scanner(System.in);
+		
+		// create server socket with a port number 5000
+		
+		try {
+			socket = new Socket("127.0.0.1", 5000);
+
+			//flux a envoyer
+			out = new PrintWriter(socket.getOutputStream());
+			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			//create two threads (processus), because receiving and sending are made at the same time
+			Thread envoyer = new Thread(new Runnable() {
+				String msg;
+				@Override
+				public void run() {
+					while(true) {
+						msg = sc.next();
+						out.println(msg);
+						out.flush();
+						
+					}
+					
+				}
+			});
+			
+			envoyer.start();
+			
+			Thread receive = new Thread(new Runnable() {
+				String msg;
+				@Override
+				public void run() {
+					while(true) {
+						try {
+							msg = in.readLine();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						System.out.println("Annuaire : " + msg);
+						
+					}
+					
+				}
+			});
+			
+			receive.start();
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		
+		
+		
+		
+		
+	}
+
+}
