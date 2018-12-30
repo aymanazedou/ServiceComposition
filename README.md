@@ -1,7 +1,7 @@
 This is a composition system for web services
 ----------------------------------------------
 
-===============in order to undersand the algorithm uses in the composition, take a look in the joint pdf.
+===============in order to undersand the algorithm used in the composition, take a look in the joint pdf.
 
 ===============in order to use this system, you should take in consideration those things :
 
